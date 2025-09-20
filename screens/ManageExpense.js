@@ -2,13 +2,17 @@ import { useContext, useLayoutEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import IconButton from "../ui/IconButton";
 import { GlobalStyles } from "../constants/styles";
-import PrimaryButton from "../ui/PrimaryButton";
 import { ExpensesContext } from "../store/ExpensesContext";
+import ExpenseForm from "../components/ExpenseForm";
 
 function ManageExpense({ route, navigation }) {
   const expenseId = route.params?.expenseId;
   const isEditing = !!expenseId;
   const context = useContext(ExpensesContext);
+
+  const selectedExpense = context.expenses.find(
+    (expense) => expense.id === expenseId
+  );
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -25,37 +29,23 @@ function ManageExpense({ route, navigation }) {
     navigation.goBack();
   }
 
-  function confirmHandler() {
+  function confirmHandler(expenseData) {
     if (isEditing) {
-      context.updateExpense(expenseId, {
-        description: "test",
-        amount: 19.99,
-        date: new Date("2025-09-20"),
-      });
+      context.updateExpense(expenseId, expenseData);
     } else {
-      context.addExpense({
-        description: "test",
-        amount: 19.99,
-        date: new Date("2025-09-20"),
-      });
+      context.addExpense(expenseData);
     }
     navigation.goBack();
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.buttonsContainer}>
-        <PrimaryButton
-          mode="flat"
-          onPress={cancelHandler}
-          style={styles.button}
-        >
-          Cancel
-        </PrimaryButton>
-        <PrimaryButton onPress={confirmHandler} style={styles.button}>
-          {isEditing ? "Update" : "Add"}
-        </PrimaryButton>
-      </View>
+      <ExpenseForm
+        onCancel={cancelHandler}
+        submitButtonLabel={isEditing ? "Update" : "Add"}
+        onSubmit={confirmHandler}
+        defaultValues={selectedExpense}
+      />
       {isEditing && (
         <View style={styles.deleteContainer}>
           <IconButton
@@ -84,14 +74,5 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderTopColor: GlobalStyles.colors.primary200,
     alignItems: "center",
-  },
-  buttonsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  button: {
-    minWidth: 120,
-    marginHorizontal: 8,
   },
 });
