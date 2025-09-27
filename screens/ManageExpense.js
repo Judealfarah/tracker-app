@@ -1,11 +1,16 @@
-import { useContext, useLayoutEffect } from "react";
+import { useContext, useLayoutEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import IconButton from "../ui/IconButton";
 import { GlobalStyles } from "../constants/styles";
 import { ExpensesContext } from "../store/ExpensesContext";
 import ExpenseForm from "../components/ExpenseForm";
+import { storeExpense, updateExpenseApi, deleteExpenseApi } from "../util/http";
+import LoadingOverlay from "../ui/LoadingOverlay";
+import ErrorOverlay from "../ui/ErrorOverlay";
 
 function ManageExpense({ route, navigation }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState();
   const expenseId = route.params?.expenseId;
   const isEditing = !!expenseId;
   const context = useContext(ExpensesContext);
@@ -20,23 +25,47 @@ function ManageExpense({ route, navigation }) {
     });
   }, [navigation, isEditing]);
 
-  function deleteExpense() {
-    context.deleteExpense(expenseId);
-    navigation.goBack();
+  async function deleteExpense() {
+    setIsLoading(true);
+    try {
+      await deleteExpenseApi(expenseId);
+      context.deleteExpense(expenseId);
+      navigation.goBack();
+    } catch (error) {
+      setError(error.message);
+      setIsLoading(false);
+    }
   }
 
   function cancelHandler() {
     navigation.goBack();
   }
 
-  function confirmHandler(expenseData) {
-    if (isEditing) {
-      context.updateExpense(expenseId, expenseData);
-    } else {
-      context.addExpense(expenseData);
+  async function confirmHandler(expenseData) {
+    setIsLoading(true);
+    try {
+      if (isEditing) {
+        context.updateExpense(expenseId, expenseData);
+        updateExpenseApi(expenseId, expenseData);
+      } else {
+        const id = await storeExpense(expenseData);
+        context.addExpense({ ...expenseData, id: id });
+      }
+      navigation.goBack();
+    } catch (error) {
+      setError(error.message);
+      setIsLoading(false);
     }
-    navigation.goBack();
   }
+
+  function errorHandler() {
+    setError(null);
+  }
+
+  if (!isLoading && error)
+    return <ErrorOverlay message={error} onConfirm={errorHandler} />;
+
+  if (isLoading) return <LoadingOverlay />;
 
   return (
     <View style={styles.container}>
